@@ -4,11 +4,13 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -26,7 +28,7 @@ class AuthController extends Controller
                 'name'     => ['required', 'string', 'max:255'],
                 'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
                 'password' => ['required', 'string', 'min:4'],
-                'role'     => ['required', 'in:admin,worker'],  // Campo role
+                'role_id'  => ['required', 'exists:roles,id'], // Campo role_id
             ], [
                 // Mensajes personalizados
                 'name.required'     => 'El nombre es obligatorio.',
@@ -35,8 +37,8 @@ class AuthController extends Controller
                 'email.unique'      => 'Este correo ya está registrado.',
                 'password.required' => 'La contraseña es obligatoria.',
                 'password.min'      => 'La contraseña debe tener al menos 4 caracteres.',
-                'role.required'     => 'El campo role es obligatorio.',
-                'role.in'           => 'El role debe ser "admin" o "worker".',
+                'role_id.required'  => 'El campo role es obligatorio.',
+                'role_id.exists'    => 'El rol seleccionado no es válido.',
             ]);
 
             // SI LA VALIDACIÓN FALLA
@@ -53,8 +55,11 @@ class AuthController extends Controller
                 'name'     => $request->name,
                 'email'    => $request->email,
                 'password' => Hash::make($request->password),
-                'role'     => $request->role,
+                'role_id'  => $request->role_id,
             ]);
+
+            // Cargar la relación de rol para incluirla en la respuesta
+            $user->load('role');
 
             // GENERAR TOKEN
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -62,7 +67,13 @@ class AuthController extends Controller
             // RESPUESTA EXITOSA
             return response()->json([
                 'message'     => 'Registro exitoso',
-                'user'        => $user->only(['id', 'name', 'email', 'role']),
+                'user'        => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role_id'   => $user->role_id,
+                    'role_name' => $user->role ? $user->role->name : null,
+                ],
                 'token'       => $token,
                 'token_type'  => 'Bearer',
                 'status'      => 'success'
@@ -115,10 +126,19 @@ class AuthController extends Controller
             // Nota: Podrías opcionalmente revocar tokens anteriores aquí si quisieras (ver logout).
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            // 5. Devolver la respuesta con el token
+            // 5. Cargar la relación 'role' para obtener el nombre del rol
+            $user->load('role');
+
+            // 6. Devolver la respuesta con el token y el rol del usuario
             return response()->json([
                 'message' => 'Inicio de sesión exitoso',
-                'user' => $user->only(['id', 'name', 'email']),
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role_id'   => $user->role_id,
+                    'role_name' => $user->role ? $user->role->name : null, // Incluir el nombre del rol
+                ],
                 'token' => $token,
                 'token_type' => 'Bearer',
             ], 200);

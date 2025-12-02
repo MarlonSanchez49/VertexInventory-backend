@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\InventoryMovementController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\VentaController;
+use App\Http\Controllers\Api\MesaController;
+use App\Http\Controllers\Api\MetodoPagoController;
 
 // Rutas Públicas (No requieren Token)
 Route::post('/register', [AuthController::class, 'register']);
@@ -21,7 +24,15 @@ Route::post('/login', [AuthController::class, 'login']);
 // Rutas Protegidas (Requieren Token de Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user();
+        $user->load('role'); // Cargar la relación 'role'
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role_id'   => $user->role_id,
+            'role_name' => $user->role ? $user->role->name : null,
+        ]);
     });
     Route::post('/logout', [AuthController::class, 'logout']);
     // Aquí van tus rutas protegidas
@@ -86,4 +97,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/movements-by-month', [ReportController::class, 'movementsByMonth']); //Entradas vs salidas agrupadas por mes (para gráficas)
     Route::get('/reports/top-product-range', [ReportController::class, 'topProductByRange']); //Producto más vendido en un rango de fechas  parametro: start_date=YYYY-MM-DD, end_date=YYYY-MM-DD
     Route::get('/reports/average-consumption', [ReportController::class, 'averageConsumption']); //Consumo promedio semanal y mensual (solo salidas)
+
+    // CRUD Ventas
+    Route::apiResource('ventas', VentaController::class);
+    Route::apiResource('mesas', MesaController::class);
+    Route::apiResource('metodos-pago', MetodoPagoController::class);
 });

@@ -60,7 +60,8 @@ class ReportController extends Controller
     public function movementsByMonth()
     {
         $data = InventoryMovement::select(
-            DB::raw('strftime("%Y-%m", created_at) as month'),
+            // CAMBIO AQUÍ: Usamos DATE_FORMAT para MySQL
+            DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
             DB::raw('SUM(CASE WHEN type = "entrada" THEN quantity ELSE 0 END) as total_in'),
             DB::raw('SUM(CASE WHEN type = "salida" THEN quantity ELSE 0 END) as total_out')
         )
